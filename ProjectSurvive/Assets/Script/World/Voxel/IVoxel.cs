@@ -16,15 +16,21 @@ public interface IVoxel {
 public class BasicVoxel : IVoxel {
 
 	protected readonly ResourceLocation loc;
+	protected readonly ResourceLocation texture;
 	protected readonly float miningDifficulty;
 
-	public BasicVoxel(ResourceLocation loc) {
+	public BasicVoxel(ResourceLocation loc, ResourceLocation texture) {
 		this.loc = loc;
+		this.texture = texture;
 		miningDifficulty = 0.0f;
 	}
 
 	public ResourceLocation GetResourceLocation() {
 		return loc;
+	}
+
+	public ResourceLocation GetTextureLocation() {
+		return texture;
 	}
 
 	public float GetMiningDifficulty(VoxelInstance voxel) {
@@ -33,8 +39,11 @@ public class BasicVoxel : IVoxel {
 
 	public void OnRender(List<Vector3> verts, List<int> tris, List<Vector2> uvs, int i, Chunk chunk, VoxelInstance voxel) {
 		Vector3 corner = voxel.GetPosInChunk().GetVector();
-		Vector2 uvMin = Vector2.zero;
-		Vector2 uvMax = new Vector2(1.0f, 1.0f);
+
+		Rect textPos = TextureHandler.Instance.GetTexture(texture);
+		Vector2 padd = new Vector2(textPos.width / 100000.0f, textPos.height / 100000.0f);
+		Vector2 uvMin = textPos.min + padd;
+		Vector2 uvMax = textPos.max - padd;
 
 		if (chunk.ShouldRender(voxel.GetPosInChunk(), Facing.SOUTH)) {
 			RenderHelper.AddQuad(verts, tris, uvs, corner, Vector3.up, Vector3.right, uvMin, uvMax, i + verts.Count);

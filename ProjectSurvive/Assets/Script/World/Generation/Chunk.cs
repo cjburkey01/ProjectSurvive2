@@ -1,68 +1,35 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
-using NoiseTest;
 
 public class Chunk : MonoBehaviour {
 
 	public static readonly int SIZE = 16;
-	public static OpenSimplexNoise noise;
-
-	private float yBase;
 
 	private Pos pos;
 	private VoxelInstance[,,] voxels;
 	private MeshFilter filter;
 	private World world;
 	private bool empty = true;
-	private bool filled = true;
 
 	public void Create(Pos pos, World world) {
-		if (noise == null) {
-			if (world.seed == long.MaxValue) {
-				noise = new OpenSimplexNoise();
-			} else {
-				noise = new OpenSimplexNoise(world.seed);
-			}
-		}
-
 		this.pos = pos;
 		this.world = world;
 		transform.position = GetWorldPos(pos, world);
-		yBase = ((world.height + 1) * SIZE) / 2;
 		voxels = new VoxelInstance[SIZE, SIZE, SIZE];
-		Generate();
-	}
-
-	private void Generate() {
-		for (int x = 0; x < SIZE; x++) {
-			for (int y = 0; y < SIZE; y++) {
-				for (int z = 0; z < SIZE; z++) {
-					if (GetNoise(GetChunkInWorld(pos).Add(new Pos(x, y, z))) >= world.cutoff) {
-						SetVoxel(new Pos(x, y, z), Voxels.Stone);
-					} else {
-						filled = false;
-					}
-				}
-			}
-		}
-	}
-
-	private double GetNoise(Pos worldPos) {
-		return noise.Evaluate(worldPos.x / world.scale, worldPos.y / world.scale, worldPos.z / world.scale) + ((yBase - worldPos.y) / world.amplitude);
 	}
 
 	public Pos GetChunkPos() {
 		return pos;
 	}
 
-	public void SetVoxel(Pos pos, IVoxel voxel) {
-		if (!InChunk(pos)) {
+	public void SetVoxel(Pos inPos, IVoxel voxel) {
+		if (!InChunk(inPos)) {
 			return;
 		}
 		if (empty && voxel != null) {
 			empty = false;
 		}
-		voxels[pos.x, pos.y, pos.z] = new VoxelInstance(voxel, this, pos, new VoxelData());
+		voxels[inPos.x, inPos.y, inPos.z] = new VoxelInstance(voxel, this, inPos, new VoxelData());
 	}
 
 	public VoxelInstance GetVoxel(Pos pos) {
@@ -135,33 +102,46 @@ public class Chunk : MonoBehaviour {
 		filter.mesh = mesh;
 	}
 
+	public bool IsFilled() {
+		for (int x = 0; x < SIZE; x++) {
+			for (int y = 0; y < SIZE; y++) {
+				for (int z = 0; z < SIZE; z++) {
+					if (GetVoxel(new Pos(x, y, z)) == null) {
+						return false;
+					}
+				}
+			}
+		}
+		return true;
+	}
+
 	public bool IsEmptyRender() {
 		if (empty) {
 			return true;
 		}
-		if (filled) {
+		if (IsFilled()) {
 			Chunk north = world.GetChunk(pos.Offset(Facing.NORTH));
 			Chunk south = world.GetChunk(pos.Offset(Facing.SOUTH));
 			Chunk east = world.GetChunk(pos.Offset(Facing.EAST));
 			Chunk west = world.GetChunk(pos.Offset(Facing.WEST));
 			Chunk up = world.GetChunk(pos.Offset(Facing.UP));
 			Chunk down = world.GetChunk(pos.Offset(Facing.DOWN));
-			if (north != null && !north.filled) {
+			if (north != null && !north.IsFilled()) {
 				return false;
 			}
-			if (south != null && !south.filled) {
+			if (south != null && !south.IsFilled()) {
 				return false;
 			}
-			if (east != null && !east.filled) {
+			if (east != null && !east.IsFilled()) {
 				return false;
 			}
-			if (west != null && !west.filled) {
+			if (west != null && !west.IsFilled()) {
 				return false;
 			}
-			if (up != null && !up.filled) {
+			if (up != null && !up.IsFilled()) {
 				return false;
 			}
-			if (down != null && !down.filled) {
+			if (down != null && !down.IsFilled()) {
 				return false;
 			}
 			return true;
